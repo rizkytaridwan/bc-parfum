@@ -42,8 +42,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/parfum', require('./routes/parfum'));
 app.use('/api/brands', require('./routes/brands'));
 app.use('/api/categories', require('./routes/categories'));
-
-// app.use('/api/notes', require('./routes/notes'));
+app.use('/api/notes', require('./routes/notes'));
 
 // Global Error Handler
 app.use((err, req, res, next) => {

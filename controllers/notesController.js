@@ -1,4 +1,4 @@
-// controllers/brandController.js
+// controllers/notesController.js
 const pool = require('../config/db');
 const cuid = require('cuid');
 const slugify = require('../utils/slugify');
@@ -6,25 +6,21 @@ const { validationResult } = require('express-validator');
 const fs = require('fs');
 const path = require('path');
 
-// Ambil semua brand (untuk publik/frontend)
-exports.getAllBrands = async (req, res) => {
+
+exports.getAllNotes = async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT id, name, slug FROM brands ORDER BY name ASC');
+    const [rows] = await pool.execute('SELECT id, name, slug FROM notes ORDER BY name ASC');
     res.json(rows);
   } catch (err) {
     res.status(500).send('Server Error');
   }
 };
 
-// Ambil satu brand (untuk halaman SEO)
-exports.getBrandBySlug = async (req, res) => {
+exports.getNoteBySlug = async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      'SELECT * FROM brands WHERE slug = ?',
-      [req.params.slug]
-    );
+    const [rows] = await pool.execute('SELECT * FROM notes WHERE slug = ?', [req.params.slug]);
     if (rows.length === 0) {
-      return res.status(404).json({ msg: 'Brand tidak ditemukan' });
+      return res.status(404).json({ msg: 'Note tidak ditemukan' });
     }
     res.json(rows[0]);
   } catch (err) {
@@ -32,8 +28,7 @@ exports.getBrandBySlug = async (req, res) => {
   }
 };
 
-// Buat brand baru (Admin)
-exports.createBrand = async (req, res) => {
+exports.createNote = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -50,21 +45,19 @@ exports.createBrand = async (req, res) => {
 
   try {
     await pool.execute(
-      'INSERT INTO brands (id, name, slug, description, imageUrl) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO notes (id, name, slug, description, imageUrl) VALUES (?, ?, ?, ?, ?)',
       [newId, name, slug, description || null, imageUrl]
     );
     res.status(201).json({ id: newId, name, slug, description, imageUrl });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ msg: 'Nama brand atau slug sudah ada.' });
+      return res.status(400).json({ msg: 'Nama note atau slug sudah ada.' });
     }
     res.status(500).send('Server Error');
   }
 };
 
-
-// Update brand (Admin)
-exports.updateBrand = async (req, res) => {
+exports.updateNote = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -75,7 +68,7 @@ exports.updateBrand = async (req, res) => {
   const slug = slugify(name);
 
   try {
-    let sql = 'UPDATE brands SET name = ?, slug = ?, description = ?';
+    let sql = 'UPDATE notes SET name = ?, slug = ?, description = ?';
     const params = [name, slug, description || null];
 
     if (req.file) {
@@ -90,48 +83,44 @@ exports.updateBrand = async (req, res) => {
     const [result] = await pool.execute(sql, params);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ msg: 'Brand tidak ditemukan' });
+      return res.status(404).json({ msg: 'Note tidak ditemukan' });
     }
-    res.json({ msg: 'Brand berhasil diperbarui.' });
+    res.json({ msg: 'Note berhasil diperbarui.' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ msg: 'Nama brand atau slug sudah ada.' });
+      return res.status(400).json({ msg: 'Nama note atau slug sudah ada.' });
     }
     res.status(500).send('Server Error');
   }
 };
 
-// Delete brand (Admin)
-exports.deleteBrand = async (req, res) => {
+exports.deleteNote = async (req, res) => {
   const { id } = req.params;
   let connection;
   try {
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    const [rows] = await connection.execute('SELECT imageUrl FROM brands WHERE id = ?', [id]);
+    const [rows] = await connection.execute('SELECT imageUrl FROM notes WHERE id = ?', [id]);
     if (rows.length === 0) {
       await connection.rollback();
-      return res.status(404).json({ msg: 'Brand tidak ditemukan' });
+      return res.status(404).json({ msg: 'Note tidak ditemukan' });
     }
 
     const imageUrl = rows[0].imageUrl;
+    await connection.execute('DELETE FROM notes WHERE id = ?', [id]);
     
-    // Hapus brand dari DB
-    await connection.execute('DELETE FROM brands WHERE id = ?', [id]);
-    
-    // Hapus gambar terkait
     if (imageUrl) {
       const filename = path.basename(imageUrl); 
       const filePath = path.join('public', 'uploads', filename);
       fs.unlink(filePath, (err) => {
-        if (err) console.error("Gagal hapus file brand:", err.message);
-        else console.log("File brand dihapus:", filePath);
+        if (err) console.error("Gagal hapus file note:", err.message);
+        else console.log("File note dihapus:", filePath);
       });
     }
 
     await connection.commit();
-    res.json({ msg: 'Brand berhasil dihapus.' });
+    res.json({ msg: 'Note berhasil dihapus.' });
   } catch (err) {
     if (connection) await connection.rollback();
     res.status(500).send('Server Error');
