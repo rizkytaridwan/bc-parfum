@@ -7,7 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 // === Rute Publik ===
 router.get('/', categoriesController.getAllCategories);
-// (Tambahkan GET by Slug nanti)
+router.get('/:slug', categoriesController.getCategoryBySlug); // <-- TAMBAHAN BARU
 
 // === Rute Admin (TERPROTEKSI) ===
 const categoryValidation = [
@@ -15,6 +15,11 @@ const categoryValidation = [
   body('description').optional().trim()
 ];
 
-router.post('/', authMiddleware, categoryValidation, categoriesController.createCategory);
+// Terapkan proteksi admin untuk rute di bawah
+router.use(authMiddleware);
+
+router.post('/', categoryValidation, categoriesController.createCategory);
+router.put('/:id', categoryValidation, categoriesController.updateCategory); // <-- TAMBAJAH BARU
+router.delete('/:id', categoriesController.deleteCategory); // <-- TAMBAHAN BARU
 
 module.exports = router;
